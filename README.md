@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <a href="https://www.npmjs.com/package/pi-bg"><img alt="npm" src="https://img.shields.io/npm/v/pi-bg?color=cb3837&label=npm&logo=npm"></a>&nbsp;
+  <a href="https://www.npmjs.com/package/@alexlikevibe/pi-bg"><img alt="npm" src="https://img.shields.io/npm/v/@alexlikevibe%2Fpi-bg?color=cb3837&label=npm&logo=npm"></a>&nbsp;
   <img alt="Pi v0.37+" src="https://img.shields.io/badge/Pi-v0.37%2B-5b50f0">&nbsp;
   <img alt="dependencies: zero" src="https://img.shields.io/badge/dependencies-zero-3fb950">&nbsp;
   <img alt="tmux: not required" src="https://img.shields.io/badge/tmux-not_required-3fb950">&nbsp;
@@ -21,7 +21,7 @@
 ## Install
 
 ```
-pi install npm:pi-bg
+pi install npm:@alexlikevibe/pi-bg
 ```
 
 Or straight from GitHub:
