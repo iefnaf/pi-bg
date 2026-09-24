@@ -40,7 +40,9 @@ import {
 import {
     assertJobSlot,
     detectBlockedSleep,
+    detectJobLogPoll,
     SLEEP_WAIT_GUIDANCE,
+    JOB_LOG_POLL_GUIDANCE,
     isAutoBackgroundAllowed,
     isBlankCommand,
     requireExistingCwd,
@@ -71,7 +73,8 @@ export function registerBashTool(
         promptGuidelines: [
             "Use bash with run_in_background=true when a command is expected to run for a long time.",
             "run_in_background is for ONE notification (the command exits when done). For per-event streaming (watching logs, polling an API, file changes), use the monitor tool instead.",
-            "Never `sleep N` to wait for something — the job lingers for the full sleep. Wait on a background job with jobs action='attach', watch with the monitor tool, or poll with an `until` loop that exits when ready.",
+            "Never `sleep N` to wait for something — the job lingers for the full sleep.",
+            "Waiting on a background job, in order of preference: (1) not urgent — finish your turn, the task notification wakes you with the result; (2) need it this turn — jobs action='attach' returns when the job exits (attach again if interrupted); (3) waiting for a condition, not exit — monitor. Never re-block the foreground by polling /tmp/pi-bg job logs with shell loops.",
             "Check background job status with jobs action='list'.",
             "Read background output with jobs action='output'.",
         ],
@@ -92,6 +95,13 @@ export function registerBashTool(
             const sleepMatch = detectBlockedSleep(p.command);
             if (sleepMatch) {
                 throw new Error(`Blocked: ${sleepMatch}. ${SLEEP_WAIT_GUIDANCE}`);
+            }
+
+            const logPoll = detectJobLogPoll(p.command);
+            if (logPoll) {
+                throw new Error(
+                    `Blocked: foreground polling of a background job's log (${logPoll}). ${JOB_LOG_POLL_GUIDANCE}`
+                );
             }
 
             assertJobSlot(reg);

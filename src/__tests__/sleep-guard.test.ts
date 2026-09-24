@@ -1,8 +1,9 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { detectBlockedSleep } from "../lifecycle.ts";
+import { detectBlockedSleep, detectJobLogPoll } from "../lifecycle.ts";
 import { BackgroundRegistry } from "../state.ts";
 import { registerBashBgTool } from "../tools/bash-bg.ts";
+import { registerBashTool } from "../tools/bash.ts";
 
 void describe("detectBlockedSleep — naive-wait detection", () => {
     void it("blocks a standalone long sleep", () => {
@@ -58,6 +59,29 @@ void describe("detectBlockedSleep — naive-wait detection", () => {
     });
 });
 
+void describe("detectJobLogPoll — foreground own-log polling (issue #2)", () => {
+    void it("blocks an until/while loop over a /tmp/pi-bg log", () => {
+        const cmd = "until grep -q 'status_idle' /tmp/pi-bg/job-56012-192.log 2>/dev/null; do sleep 5; done; cat /tmp/pi-bg/job-56012-192.log";
+        assert.equal(detectJobLogPoll(cmd), cmd);
+        assert.ok(detectJobLogPoll("while ! grep -q x /tmp/pi-bg/a.log; do sleep 1; done"));
+    });
+
+    void it("blocks a follow-mode tail on our own log", () => {
+        assert.ok(detectJobLogPoll("tail -f /tmp/pi-bg/job-1.log"));
+        assert.ok(detectJobLogPoll("tail -F /tmp/pi-bg/job-1.log | grep --line-buffered READY"));
+    });
+
+    void it("allows one-shot reads of our logs", () => {
+        assert.equal(detectJobLogPoll("cat /tmp/pi-bg/job-1.log"), null);
+        assert.equal(detectJobLogPoll("tail -n 50 /tmp/pi-bg/job-1.log"), null);
+    });
+
+    void it("allows loops and tails on NON-extension paths", () => {
+        assert.equal(detectJobLogPoll("until grep -q READY /var/log/app.log; do sleep 0.5; done"), null);
+        assert.equal(detectJobLogPoll("tail -f /var/log/system.log"), null);
+    });
+});
+
 void describe("bash_bg — rejects a backgrounded sleep wait", () => {
     function bashBg() {
         let tool: { execute: (id: string, p: unknown, s: unknown, u: unknown, c: unknown) => Promise<unknown> } | undefined;
@@ -82,5 +106,37 @@ void describe("bash_bg — rejects a backgrounded sleep wait", () => {
         const { tool, ctx } = bashBg();
         const res = await tool.execute("t2", { command: "echo hi" }, undefined, undefined, ctx);
         assert.ok(res, "non-sleep command runs");
+    });
+
+    void it("blocks a job-log poll loop in bash_bg (issue #2)", async () => {
+        const { tool, ctx } = bashBg();
+        await assert.rejects(
+            () => tool.execute(
+                "t3",
+                { command: "until grep -q done /tmp/pi-bg/job-9.log; do sleep 5; done" },
+                undefined, undefined, ctx
+            ),
+            /Blocked: polling a background job's log.*jobs action='attach'/s
+        );
+    });
+});
+
+void describe("bash — rejects a foreground job-log poll loop (issue #2)", () => {
+    void it("blocks the observed anti-pattern with steering to attach", async () => {
+        let tool: { execute: (id: string, p: unknown, s: unknown, u: unknown, c: unknown) => Promise<unknown> } | undefined;
+        const pi = { registerTool: (def: typeof tool) => { tool = def; }, sendMessage() {} };
+        registerBashTool(pi as never, new BackgroundRegistry(), {} as never);
+        const ctx = {
+            cwd: process.cwd(),
+            ui: { notify() {}, setWidget() {}, setStatus() {}, theme: { fg: (_c: string, t: string) => t } },
+        };
+        await assert.rejects(
+            () => tool!.execute(
+                "t1",
+                { command: "until grep -q 'status_idle' /tmp/pi-bg/job-x.log 2>/dev/null; do sleep 5; done; cat /tmp/pi-bg/job-x.log", timeout: 300 },
+                undefined, undefined, ctx
+            ),
+            /Blocked: foreground polling of a background job's log.*jobs action='attach'/s
+        );
     });
 });

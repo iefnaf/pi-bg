@@ -209,6 +209,13 @@ A live pill widget keeps your running jobs in view — each with its duration an
 
 ## Releases
 
+### 2.2.0 — Waiting guidance as a decision tree + job-log poll guard ([#2](https://github.com/iefnaf/pi-bg/issues/2))
+
+- **Ordered waiting guidance.** `bash`/`bash_bg` guidance now teaches, in order: not urgent → finish your turn (the task notification wakes you with the result); need it this turn → `jobs attach` (attach again if interrupted); waiting for a condition, not exit → `monitor`. The `until`-loop example is gone from the sleep-guard steering.
+- **New guard: job-log poll loops blocked.** `until grep … /tmp/pi-bg/<id>.log; do sleep …; done` and `tail -f` on this extension's own logs are rejected in both `bash` and `bash_bg`, with steering to attach / monitor / end-turn. One-shot reads (`cat`, `tail -n`) are unaffected, and loops/tails on non-extension paths are never blocked.
+- **attach wording**: detaching now says "Attach again to keep waiting" instead of only pointing at `jobs output`.
+- Verified experimentally: `pi -p` sessions exit at turn end without waiting for background jobs — task notifications are not delivered there, so `attach` remains the way to wait in non-interactive/subagent contexts.
+
 ### 2.1.0 — Foreground wait capped at 30s ([#1](https://github.com/iefnaf/pi-bg/issues/1))
 
 - **Foreground commands auto-background after 30 seconds at most** — the wait is `min(timeout, 30s)`. An explicit `timeout` can only shorten it, never extend it past the cap. A model passing `timeout: 600` used to block the whole turn for the full 600s; now it backgrounds at 30s and the result arrives later via `<task-notification>` as usual.

@@ -252,7 +252,7 @@ async function attachAction(
             return {
                 content: [
                     textBlock(
-                        `Stopped following ${label} — it's still running in the background. Use jobs output to check on it.`
+                        `Stopped following ${label} — still running. Attach again to keep waiting, or use jobs output to peek.`
                     ),
                 ],
                 details: undefined,

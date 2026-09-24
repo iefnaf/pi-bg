@@ -203,6 +203,13 @@ monitor({ ws: { url: "wss://events.example.com/stream" }, description: "배포 �
 
 ## 릴리스
 
+### 2.2.0 — 대기 가이드를 의사결정 트리로 + 로그 폴링 가드 ([#2](https://github.com/iefnaf/pi-bg/issues/2))
+
+- **순서가 있는 대기 가이드.** `bash`/`bash_bg` 안내문이 우선순위 순으로 가르칩니다: 급하지 않으면 → 턴을 마치세요(작업 알림이 결과를 들고 깨워줍니다); 이번 턴에 필요하면 → `jobs attach`(중단되면 다시 attach); 종료가 아닌 조건을 기다리면 → `monitor`. sleep-guard 안내에서 `until` 루프 예시는 삭제되었습니다.
+- **새 가드: 로그 폴링 루프 차단.** `until grep … /tmp/pi-bg/<id>.log; do sleep …; done` 및 이 확장 자체 로그에 대한 `tail -f`는 `bash`와 `bash_bg` 모두에서 거부되며 attach / monitor / 턴 종료로 안내합니다. 일회성 읽기(`cat`, `tail -n`)는 영향받지 않으며, 확장 외 경로의 루프/tail은 절대 차단하지 않습니다.
+- **attach 문구**: 추적 중단 시 "다시 attach해서 계속 기다리세요"라고 안내합니다.
+- 실험으로 확인: `pi -p` 세션은 턴 종료 후 백그라운드 작업을 기다리지 않고 종료됩니다 — 알림이 전달될 곳이 없어 비대화형/서브에이전트 컨텍스트에서는 `attach`가 여전히 유일한 대기 수단입니다.
+
 ### 2.1.0 — 포그라운드 대기 30초 상한 ([#1](https://github.com/iefnaf/pi-bg/issues/1))
 
 - **포그라운드 명령은 최대 30초 후 자동 백그라운드로 전환** — 대기 시간은 `min(timeout, 30초)`. 명시적 `timeout`은 대기를 줄일 수만 있고 상한을 늘릴 수는 없습니다. 예전에는 모델이 `timeout: 600`을 넘기면 턴 전체가 600초 내내 블록됐지만, 이제는 30초에 백그라운드로 넘어가고 결과는 평소처럼 `<task-notification>`으로 나중에 전달됩니다.

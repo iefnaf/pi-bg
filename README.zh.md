@@ -206,6 +206,13 @@ monitor({ ws: { url: "wss://events.example.com/stream" }, description: "部署�
 
 ## 版本发布
 
+### 2.2.0 —— 等待指引决策树 + 日志轮询 guard（[#2](https://github.com/iefnaf/pi-bg/issues/2)）
+
+- **有序等待指引。** `bash`/`bash_bg` 的指引改为按优先级教学：不急 → 结束回合（任务通知会唤醒你带回结果）；本回合就要 → `jobs attach`（被中断就再 attach）；等的是条件而非退出 → `monitor`。sleep-guard 引导里的 `until` 循环示范已删除。
+- **新增 guard：拦截日志轮询循环。** `until grep … /tmp/pi-bg/<id>.log; do sleep …; done` 和对本扩展自己日志的 `tail -f`，在 `bash` 和 `bash_bg` 中都会被拒绝，并引导到 attach / monitor / 结束回合。一次性读取（`cat`、`tail -n`）不受影响；非扩展路径的循环和 tail 永不拦截。
+- **attach 措辞**：中断跟随时改为提示“再 attach 一次继续等”，而不是只指向 `jobs output`。
+- 实验验证：`pi -p` 会话在回合结束后不等待后台任务直接退出 —— 通知无处投递，因此非交互/子代理场景下 `attach` 仍是唯一的等待方式。
+
 ### 2.1.0 —— 前台等待硬上限 30 秒([#1](https://github.com/iefnaf/pi-bg/issues/1))
 
 - **前台命令最多等 30 秒就自动转后台** —— 等待时长 = `min(timeout, 30秒)`。显式传 `timeout` 只能缩短等待,不能超过硬上限。以前模型传 `timeout: 600` 会让整个回合阻塞满 600 秒;现在 30 秒整就转后台,结果照常通过 `<task-notification>` 稍后投递。

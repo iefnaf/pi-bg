@@ -335,12 +335,38 @@ export function isAutoBackgroundAllowed(command: string): boolean {
  */
 export const SLEEP_WAIT_GUIDANCE =
     "A fixed `sleep N` to wait wastes time and leaves a job lingering for the " +
-    "full duration. Instead:\n" +
-    "• Waiting on a background job you started? Use jobs action='attach' — it " +
-    "returns as soon as that job finishes.\n" +
-    "• Waiting for a condition? Use the monitor tool, or a poll loop that EXITS " +
-    "when ready (e.g. `until grep -q READY log; do sleep 0.5; done`).\n" +
+    "full duration. Instead, in order of preference:\n" +
+    "• Not needed until the job ends? Finish your turn — the task notification " +
+    "will wake you with the result.\n" +
+    "• Need the result within this turn? jobs action='attach' returns as soon " +
+    "as that job finishes (attach again if interrupted).\n" +
+    "• Waiting for a condition rather than completion? Use the monitor tool.\n" +
     "• Just pacing/rate-limiting? Keep it under 2 seconds.";
+
+/**
+ * Detect a foreground wait that polls THIS extension's own job logs — the
+ * anti-pattern where the agent, handed a background handle, re-blocks the
+ * turn with `until grep … /tmp/pi-bg/<id>.log; do sleep 5; done` (issue #2).
+ * Matches shell loops (`until`/`while`/`do…done`) and follow-mode tails that
+ * reference a /tmp/pi-bg/ path. One-shot reads (cat, tail -n) stay allowed.
+ */
+export function detectJobLogPoll(command: string): string | null {
+    const cmd = command.trim();
+    if (!/\/tmp\/pi-bg\//.test(cmd)) return null;
+    const loops =
+        /\b(until|while)\b/.test(cmd) ||
+        /\bdo\b[\s\S]*\bdone\b/.test(cmd) ||
+        /\btail\s+(-[a-zA-Z]*[fF])\b/.test(cmd);
+    return loops ? cmd : null;
+}
+
+/** Steering shown when a foreground job-log poll loop is blocked. */
+export const JOB_LOG_POLL_GUIDANCE =
+    "Polling this extension's own job log in the foreground re-blocks the " +
+    "turn the backgrounding just freed. Instead:\n" +
+    "• Need the job's result? jobs action='attach' returns when it exits.\n" +
+    "• Not urgent? Finish your turn — the task notification will wake you.\n" +
+    "• Waiting for a specific line rather than exit? Use the monitor tool.";
 
 /** A bare `sleep N[unit]` that counts as a wait (>= 2s). Float durations
  *  (`sleep 0.5`) and sub-2s integer sleeps are deliberate pacing — allowed. */
