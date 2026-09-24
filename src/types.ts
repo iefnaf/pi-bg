@@ -7,6 +7,20 @@ import type { AgentToolResult } from "@earendil-works/pi-agent-core";
 
 // --- Configuration constants ---
 export const DEFAULT_TIMEOUT_MS = 120_000;
+/** Hard cap on how long a foreground command may block the turn before it is
+ * auto-backgrounded — regardless of the explicit `timeout` the model passes
+ * (issue #1: a large timeout must not freeze the agent). */
+export const AUTO_BACKGROUND_CAP_MS = 30_000;
+
+/** Foreground wait = min(explicit timeout | DEFAULT_TIMEOUT_MS, cap). */
+export function resolveForegroundWaitMs(
+    timeoutSec: number | undefined
+): number {
+    return Math.min(
+        timeoutSec ? timeoutSec * 1000 : DEFAULT_TIMEOUT_MS,
+        AUTO_BACKGROUND_CAP_MS
+    );
+}
 export const QUICK_COMPLETION_MS = 2_000;
 export const FOREGROUND_TAIL_BYTES = 4_096;
 export const STALL_CHECK_INTERVAL_MS = 5_000;

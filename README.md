@@ -16,7 +16,7 @@
   <img alt="license: MIT" src="https://img.shields.io/badge/license-MIT-blue">
 </p>
 
-**Your agent shouldn't twiddle its thumbs while the build runs.** This is Claude Code's background-task experience, brought to Pi: kick off a long command, and instead of blocking the whole session, it slips into the background while the agent keeps working. Auto-background after 120 seconds, instant background with Ctrl+Shift+B, output capture, stall detection, and a full job manager — all in one extension.
+**Your agent shouldn't twiddle its thumbs while the build runs.** This is Claude Code's background-task experience, brought to Pi: kick off a long command, and instead of blocking the whole session, it slips into the background while the agent keeps working. Auto-background after 30 seconds, instant background with Ctrl+Shift+B, output capture, stall detection, and a full job manager — all in one extension.
 
 ## Install
 
@@ -34,7 +34,7 @@ Needs Pi v0.37+. That's the only requirement — there are **no external depende
 
 ## Why You'll Want This
 
-**Blocked sessions are over.** Dev servers, test suites, builds — anything still chugging after 120 seconds gets quietly moved to the background. The agent gets a heads-up and carries on with the next thing instead of staring at a spinner. Want it gone sooner? Background any command by hand, any time.
+**Blocked sessions are over.** Dev servers, test suites, builds — anything still chugging after 30 seconds gets quietly moved to the background. The agent gets a heads-up and carries on with the next thing instead of staring at a spinner. Want it gone sooner? Background any command by hand, any time.
 
 **It feels like Claude Code, because it's modeled on Claude Code.** The whole background/foreground dance — Ctrl+Shift+B to background, output capture, completion pings, stall detection — is built directly on Claude Code's implementation. Same message format, same terminal-native icons, same "agent never stops moving" flow. If you've got the muscle memory, it's already here.
 
@@ -43,7 +43,7 @@ Needs Pi v0.37+. That's the only requirement — there are **no external depende
 ## Quick Start
 
 ```
-# Agent runs a long command — auto-backgrounds after 120s
+# Agent runs a long command — auto-backgrounds after 30s
 bash({ command: "npm run build" })
 
 # Skip the wait — start it in the background up front
@@ -68,12 +68,12 @@ Hit **Ctrl+Shift+B** whenever commands are running to background them all on the
 
 ### bash (override)
 
-The built-in bash tool, with a survival instinct. Commands run normally — but if one blows past 120 seconds, it silently slides into the background. No decision prompt, no forced turn: the tool result itself (`Command running in background with ID: …`) tells the agent where the output is going.
+The built-in bash tool, with a survival instinct. Commands run normally — but if one blows past 30 seconds, it silently slides into the background. No decision prompt, no forced turn: the tool result itself (`Command running in background with ID: …`) tells the agent where the output is going.
 
 | Parameter | Description |
 |-----------|-------------|
 | `command` | Shell command to run |
-| `timeout` | Custom timeout in seconds (default: 120) |
+| `timeout` | Max seconds before auto-backgrounding (default: 120, hard-capped at 30) |
 | `run_in_background` | Start the command in the background immediately, skipping the foreground run and the auto-background timer |
 
 ### bash_bg
@@ -165,7 +165,7 @@ No magic, just a tidy state machine:
 ```
 Command starts (direct Node.js child_process.spawn)
   → Done in <2s?           Return the result immediately
-  → Still running at 120s? Auto-background → the tool result carries the new task ID
+  → Still running at 30s? Auto-background → the tool result carries the new task ID
   → You press Ctrl+Shift+B?  Background immediately → agent continues
 
 Background job running
@@ -208,6 +208,12 @@ That's exactly how Claude Code behaves: submitting input during an interruptible
 A live pill widget keeps your running jobs in view — each with its duration and a preview of the command. Completed and failed counts ride along in the status line. When you want the full picture, Shift+Down or `/bg-list` opens the task manager.
 
 ## Releases
+
+### 2.1.0 — Foreground wait capped at 30s ([#1](https://github.com/iefnaf/pi-bg/issues/1))
+
+- **Foreground commands auto-background after 30 seconds at most** — the wait is `min(timeout, 30s)`. An explicit `timeout` can only shorten it, never extend it past the cap. A model passing `timeout: 600` used to block the whole turn for the full 600s; now it backgrounds at 30s and the result arrives later via `<task-notification>` as usual.
+- Foreground is for quick commands. Expected-long work should use `run_in_background` (one completion notification) or the `monitor` tool (per-event streaming).
+- Unchanged: the 2s quick-completion window, the `sleep` blocklist (non-backgroundable commands are still killed at their wait deadline), and background-job lifecycles.
 
 ### 2.0.0 — Claude Code parity re-architecture
 

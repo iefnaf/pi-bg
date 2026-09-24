@@ -20,7 +20,7 @@ import {
 import { appendFileSync, unlinkSync } from "node:fs";
 import type { BackgroundRegistry } from "../state.ts";
 import {
-    DEFAULT_TIMEOUT_MS,
+    resolveForegroundWaitMs,
     OUTPUT_PREVIEW_CHARS,
     QUICK_COMPLETION_MS,
     type ForegroundSlot,
@@ -62,11 +62,12 @@ export function registerBashTool(
         ...originalBash,
         name: "bash",
         description:
-            "Run a bash command. Long-running commands auto-background after timeout. " +
+            "Run a bash command. Foreground commands auto-background after 30s at most " +
+            "(an explicit lower `timeout` backgrounds sooner). " +
             "Set run_in_background=true to start in background immediately. " +
             "Use /bg to manually background a running command.",
         promptSnippet:
-            "Run shell commands; long-running commands auto-background or use run_in_background=true",
+            "Run shell commands; foreground auto-backgrounds after ≤30s, or use run_in_background=true",
         promptGuidelines: [
             "Use bash with run_in_background=true when a command is expected to run for a long time.",
             "run_in_background is for ONE notification (the command exits when done). For per-event streaming (watching logs, polling an API, file changes), use the monitor tool instead.",
@@ -112,7 +113,7 @@ export function registerBashTool(
             return runForeground({
                 toolCallId,
                 command: p.command,
-                timeoutMs: p.timeout ? p.timeout * 1000 : DEFAULT_TIMEOUT_MS,
+                timeoutMs: resolveForegroundWaitMs(p.timeout),
                 signal,
                 onUpdate,
                 ctx: bashCtx,

@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { BackgroundRegistry } from "../state.ts";
 import { registerBashTool } from "../tools/bash.ts";
 import { killProcessTree } from "../spawn.ts";
-import { EVENT, type Job } from "../types.ts";
+import { EVENT, resolveForegroundWaitMs, type Job } from "../types.ts";
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -147,5 +147,22 @@ void describe("bash tool — Claude Code tool-result strings", () => {
         for (const pid of spawnedPids) {
             try { killProcessTree(pid, "SIGKILL"); } catch { /* already gone */ }
         }
+    });
+});
+
+void describe("resolveForegroundWaitMs — foreground wait cap (issue #1)", () => {
+    void it("caps the default (no explicit timeout) at 30s", () => {
+        assert.equal(resolveForegroundWaitMs(undefined), 30_000);
+    });
+
+    void it("respects an explicit timeout at or below the cap", () => {
+        assert.equal(resolveForegroundWaitMs(1), 1_000);
+        assert.equal(resolveForegroundWaitMs(10), 10_000);
+        assert.equal(resolveForegroundWaitMs(30), 30_000);
+    });
+
+    void it("caps large explicit timeouts at 30s — no turn freeze", () => {
+        assert.equal(resolveForegroundWaitMs(120), 30_000);
+        assert.equal(resolveForegroundWaitMs(600), 30_000);
     });
 });

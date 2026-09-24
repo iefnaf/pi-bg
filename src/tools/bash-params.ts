@@ -7,7 +7,11 @@ import { Type } from "@earendil-works/pi-ai";
 export const bashParamSchema = Type.Object({
     command: Type.String({ description: "Shell command to run" }),
     timeout: Type.Optional(
-        Type.Number({ description: "Timeout in seconds (default: 120)" })
+        Type.Number({
+            description:
+                "Max seconds before this command auto-backgrounds " +
+                "(default: 120, hard-capped at 30; use run_in_background for longer jobs)",
+        })
     ),
     run_in_background: Type.Optional(
         Type.Boolean({
