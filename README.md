@@ -1,4 +1,4 @@
-# pi-patty-bg-tasks
+# pi-bg
 
 <p align="center">
   <strong>English</strong> · <a href="README.ko.md">한국어</a> · <a href="README.zh.md">中文</a>
@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <a href="https://www.npmjs.com/package/pi-patty-bg-tasks"><img alt="npm" src="https://img.shields.io/npm/v/pi-patty-bg-tasks?color=cb3837&label=npm&logo=npm"></a>&nbsp;
+  <a href="https://www.npmjs.com/package/pi-bg"><img alt="npm" src="https://img.shields.io/npm/v/pi-bg?color=cb3837&label=npm&logo=npm"></a>&nbsp;
   <img alt="Pi v0.37+" src="https://img.shields.io/badge/Pi-v0.37%2B-5b50f0">&nbsp;
   <img alt="dependencies: zero" src="https://img.shields.io/badge/dependencies-zero-3fb950">&nbsp;
   <img alt="tmux: not required" src="https://img.shields.io/badge/tmux-not_required-3fb950">&nbsp;
@@ -21,13 +21,13 @@
 ## Install
 
 ```
-pi install npm:pi-patty-bg-tasks
+pi install npm:pi-bg
 ```
 
 Or straight from GitHub:
 
 ```
-pi install git:github.com/patty-io/pi-patty-bg-tasks
+pi install git:github.com/iefnaf/pi-bg
 ```
 
 Needs Pi v0.37+. That's the only requirement — there are **no external dependencies** and **no tmux**. Background jobs run as plain Node.js child processes with their output piped straight to a file descriptor. Nothing to install, nothing to babysit.
@@ -299,8 +299,8 @@ tmux-backed background jobs, 15s auto-background, cooperative steering, and the 
 ## Development
 
 ```
-git clone https://github.com/patty-io/pi-patty-bg-tasks.git
-cd pi-patty-bg-tasks
+git clone https://github.com/iefnaf/pi-bg.git
+cd pi-bg
 pnpm install
 pnpm check    # type-check
 pnpm test     # run tests
@@ -320,8 +320,10 @@ PRs welcome. The drill:
 
 ## License
 
-[MIT](LICENSE) © Patty
+[MIT](LICENSE) © patty.io & alexlikevibe
 
 ## Author
 
-**Patty** · [GitHub](https://github.com/patty-io)
+**alexlikevibe** · [GitHub](https://github.com/iefnaf)
+
+> Personal fork of [pi-patty-bg-tasks](https://github.com/patty-io/pi-patty-bg-tasks) by Patty.

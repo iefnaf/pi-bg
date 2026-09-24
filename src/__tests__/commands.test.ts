@@ -1,5 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { BackgroundRegistry } from "../state.ts";
 import { registerCommands } from "../commands.ts";
 
@@ -24,7 +25,10 @@ void describe("commands", () => {
         assert.ok(commands.has("bg"));
         assert.ok(commands.has("bg-list"));
         assert.ok(commands.has("bg-version"));
-        assert.match(notices[0], /^pi-patty-bg-tasks@\d+\.\d+\.\d+ loaded from /);
-        assert.match(notices[0], /pi-patty-bg-tasks$/);
+        const pkg = JSON.parse(
+            readFileSync(new URL("../../package.json", import.meta.url), "utf-8")
+        ) as { name: string };
+        assert.match(notices[0], new RegExp(`^${pkg.name}@\\d+\\.\\d+\\.\\d+ loaded from `));
+        assert.match(notices[0], / loaded from \//);
     });
 });

@@ -47,7 +47,7 @@ export function registerCommands(
                 version?: string;
             };
             ctx.ui.notify(
-                `${pkg.name ?? "pi-patty-bg-tasks"}@${pkg.version ?? "unknown"} loaded from ${packageRoot}`,
+                `${pkg.name ?? "pi-bg"}@${pkg.version ?? "unknown"} loaded from ${packageRoot}`,
                 "info"
             );
         },
