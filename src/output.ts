@@ -31,6 +31,50 @@ export function readBoundedTail(logPath: string, maxChars: number): string {
     }
 }
 
+/**
+ * Read a log file for programmatic callers, bounded by maxBytes. Files within
+ * the cap return whole; larger files keep the first and last maxBytes/2 around
+ * an omission marker, mirroring upstream pi's structured bash output. Returns
+ * the empty string when the log cannot be read (callers decide what that means).
+ */
+export function readLogWindow(
+    logPath: string,
+    maxBytes: number
+): { output: string; truncated: boolean } {
+    let fd: number;
+    try {
+        fd = openSync(logPath, "r");
+    } catch {
+        return { output: "", truncated: false };
+    }
+    try {
+        const { size } = fstatSync(fd);
+        if (size === 0) return { output: "", truncated: false };
+        if (size <= maxBytes) {
+            const buf = Buffer.alloc(size);
+            readSync(fd, buf, 0, size, 0);
+            return { output: buf.toString("utf-8"), truncated: false };
+        }
+        const half = Math.floor(maxBytes / 2);
+        const head = Buffer.alloc(half);
+        readSync(fd, head, 0, half, 0);
+        const tail = Buffer.alloc(half);
+        readSync(fd, tail, 0, half, size - half);
+        const omitted = size - maxBytes;
+        return {
+            output:
+                head.toString("utf-8") +
+                `\n...[${omitted} bytes omitted]...\n` +
+                tail.toString("utf-8"),
+            truncated: true,
+        };
+    } catch {
+        return { output: "", truncated: false };
+    } finally {
+        closeSync(fd);
+    }
+}
+
 // Terminal escape/control sequences stripped from a progress line so the
 // sidebar shows clean text and crafted job output cannot inject escapes. The
 // leading \u001b (ESC) is essential — without it these would eat literal

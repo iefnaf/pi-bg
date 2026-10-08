@@ -22,12 +22,13 @@ import type { BackgroundRegistry } from "../state.ts";
 import {
     resolveForegroundWaitMs,
     OUTPUT_PREVIEW_CHARS,
+    STRUCTURED_OUTPUT_MAX_BYTES,
     QUICK_COMPLETION_MS,
     type ForegroundSlot,
     type UiContext,
 } from "../types.ts";
 import { spawnWithFileOutput, killProcessTree, type SpawnExit } from "../spawn.ts";
-import { streamLog } from "../output.ts";
+import { streamLog, readLogWindow } from "../output.ts";
 import { showBackgroundHint, clearBackgroundHint } from "../hint.ts";
 import {
     add,
@@ -161,10 +162,14 @@ async function runForeground(args: {
         cwd: ctx.cwd,
         logPath,
     });
+    const startedAt = Date.now();
 
     // Register the foreground slot so Ctrl+Shift+B can find this command.
     let pauseRequested = false;
     let handedToBackground = false;
+    // Set when the structured result points at the log via full_output_path;
+    // the `finally` block then leaves the file in place for later reads.
+    let keepForegroundLog = false;
     let pauseResolve: ((reason: "manual" | "timeout") => void) | null = null;
     const pausePromise = new Promise<"manual" | "timeout">((r) => {
         pauseResolve = r;
@@ -253,12 +258,52 @@ async function runForeground(args: {
         exit: SpawnExit
     ): AgentToolResult<BashToolDetails | undefined> => {
         const output = readLogTail(job, OUTPUT_PREVIEW_CHARS);
+        const wallTimeSeconds = Math.round((Date.now() - startedAt) / 100) / 10;
+        // Machine-readable result for programmatic callers (codemode): full
+        // log up to 1 MiB, exit code, timing. Not sent to the model — `content`
+        // stays the lean preview, so the conversation path is unchanged. Only
+        // built when there is a numeric exit code (the inherited outputSchema
+        // requires one; a signal death is a deliberate cancel without one).
+        let structured:
+            | {
+                  output: string;
+                  truncated: boolean;
+                  full_output_path?: string;
+                  exit_code: number;
+                  wall_time_seconds: number;
+              }
+            | undefined;
+        if (typeof exit.code === "number") {
+            const win = readLogWindow(logPath, STRUCTURED_OUTPUT_MAX_BYTES);
+            if (win.truncated) keepForegroundLog = true;
+            structured = {
+                output: win.output,
+                truncated: win.truncated,
+                ...(win.truncated ? { full_output_path: logPath } : {}),
+                exit_code: exit.code,
+                wall_time_seconds: wallTimeSeconds,
+            };
+        }
         // A signal death (e.g. Esc-cancel killed the process group) is a
         // deliberate cancel, not a command failure — never an error result.
         if (exit.signal === null && exit.code !== 0) {
-            throw new Error(output || `Command exited with code ${exit.code ?? 1}`);
+            // Reported as a failure without throwing, so `structuredContent`
+            // survives for programmatic callers (upstream bash semantics:
+            // codemode resolves non-zero exits to the structured value).
+            return {
+                content: [
+                    textBlock(output || `Command exited with code ${exit.code ?? 1}`),
+                ],
+                details: undefined,
+                ...(structured ? { structuredContent: structured } : {}),
+                isError: true,
+            };
         }
-        return { content: [textBlock(output || "(no output)")], details: undefined };
+        return {
+            content: [textBlock(output || "(no output)")],
+            details: undefined,
+            ...(structured ? { structuredContent: structured } : {}),
+        };
     };
 
     try {
@@ -310,7 +355,11 @@ async function runForeground(args: {
         reg.foreground.delete(toolCallId);
         if (!handedToBackground) {
             reg.jobs.delete(id);
-            try { unlinkSync(logPath); } catch { /* best-effort */ }
+            // Keep the log when the structured result references it via
+            // full_output_path; drop it otherwise, as before.
+            if (!keepForegroundLog) {
+                try { unlinkSync(logPath); } catch { /* best-effort */ }
+            }
         }
     }
 }
