@@ -28,6 +28,9 @@ export const STALL_THRESHOLD_MS = 45_000;
 export const STALL_TAIL_BYTES = 1024;
 export const MAX_LOG_BYTES = 100 * 1024 * 1024;
 export const OUTPUT_PREVIEW_CHARS = 12_000;
+/** Cap for the structured (programmatic-caller) output of a completed
+ * foreground command — matches upstream pi's codemode-visible bash budget. */
+export const STRUCTURED_OUTPUT_MAX_BYTES = 1024 * 1024;
 export const RECENT_TERMINAL_KEEP = 20;
 export const MAX_CONCURRENT_JOBS = 16;
 
